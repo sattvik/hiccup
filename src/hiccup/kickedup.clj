@@ -27,12 +27,22 @@
 		  (str (last steps) item)))
     (set! steps (conj steps item))))
 
+(declare literal?)
+(defn- literal-map?
+  "Tests whether a map is a literal (ie, all keys and values literal)."
+  [m]
+  (and (literal? (keys m))
+       (literal? (vals m))))
+
 (defn- literal?
+  "Tests whether or not the argument is a literal we can compile (ie,
+   it's either a simple literal, or a supported collection of literals)."
   [x]
   (every? #(or (number? %)
 	       (string? %)
 	       (keyword? %)
-	       (vector? %))
+	       (vector? %)
+	       (and (map? %) (literal-map? %)))
 	  x))
 
 (defn- perf-warning
@@ -40,6 +50,7 @@
   [form]
   (if *warn-on-interpret*
     (do
+      (println "------------------------------------------------------")
       (println "Kickup warning - Could not compile the following form:")
       (println (str form))
       (println "This form will be interpreted."))))
@@ -122,7 +133,7 @@
 	  (emit tag)
 	  (emit (make-attrs attrs))
 	  (emit " />"))))
-    (do (println (perf-warning element))
+    (do (perf-warning element)
 	(emit `(render-tag ~element)))))
 
 (defn- compile-html
