@@ -27,18 +27,13 @@
 		  (str (last steps) item)))
     (set! steps (conj steps item))))
 
-(defn- can-compile-tag?
-  "Returns true if the given tag can be compiled."
-  [form]
-  (let [fst (first form)
-	snd (second form)]
-    (and (or (keyword? fst)
-	     (string? fst)
-	     (symbol? fst))
-	 (or (nil? snd)
-	     (vector? snd)
-	     (map? snd)
-	     (number? snd)))))
+(defn- literal?
+  [x]
+  (every? #(or (number? %)
+	       (string? %)
+	       (keyword? %)
+	       (vector? %))
+	  x))
 
 (defn- perf-warning
   "If *warn-on-interpret* is true, outputs a performance warning."
@@ -47,7 +42,7 @@
     (do
       (println "Kickup warning - Could not compile the following form:")
       (println (str form))
-      (println "Falling back to interpreted mode."))))
+      (println "This form will be interpreted."))))
 
 (defn- format-attr
   "Turn a name/value pair into an attribute stringp"
@@ -110,7 +105,7 @@
   "Compile an HTML tag represented as a vector to the code to render
    it as a string of HTML."
   [element]
-  (if (can-compile-tag? element)
+  (if (literal? element)
     (let [[tag attrs content] (parse-element element)]
       (if (or content (container-tags tag))
 	(do
