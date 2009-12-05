@@ -40,12 +40,14 @@
   "Tests whether or not the argument is a literal we can compile (ie,
    it's either a simple literal, or a supported collection of literals)."
   [x]
-  (every? #(or (number? %)
-	       (string? %)
-	       (keyword? %)
-	       (vector? %)
-	       (and (map? %) (literal-map? %)))
-	  x))
+  (if (or (vector? x) (map? x))
+    (every? #(or (number? %)
+		 (string? %)
+		 (keyword? %)
+		 (vector? %)
+		 (and (map? %) (literal-map? %)))
+	    x)
+    (or (number? x) (string? x) (keyword? x))))
 
 (defn- perf-warning
   "If *warn-on-interpret* is true, outputs a performance warning."
