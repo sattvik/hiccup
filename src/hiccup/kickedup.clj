@@ -122,19 +122,11 @@
     (let [[tag attrs content] (parse-element element)]
       (if (or content (container-tags tag))
 	(do
-	  (emit "<")
-	  (emit tag)
-	  (emit (make-attrs attrs))
-	  (emit ">")
+	  (emit "<" tag (make-attrs attrs) ">")
 	  (compile-html content)
-	  (emit "</")
-	  (emit tag)
-	  (emit ">"))
+	  (emit "</" tag ">"))
 	(do
-	  (emit "<")
-	  (emit tag)
-	  (emit (make-attrs attrs))
-	  (emit " />"))))
+	  (emit "<" tag (make-attrs attrs) " />"))))
     (do (perf-warning element)
 	(emit `(render-tag ~element)))))
 
