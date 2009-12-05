@@ -19,13 +19,15 @@
   "Append this item to the list of steps to compile. This is also where the
    logic of string optimization happens: if you emit two strings in a row,
    they get combined into one string."
-  [item]
+  [item & items]
   (if (and (string? item)
 	   (string? (last steps)))
     (set! steps (assoc steps
 		  (dec (count steps))
 		  (str (last steps) item)))
-    (set! steps (conj steps item))))
+    (set! steps (conj steps item)))
+  (when (not (empty? items))
+    (apply emit items)))
 
 (declare literal?)
 (defn- literal-map?
