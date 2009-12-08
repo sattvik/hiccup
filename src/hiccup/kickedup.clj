@@ -101,20 +101,6 @@
       [tag (merge tag-attrs map-attrs) (next content)]
       [tag tag-attrs content])))
 
-; This is an unmodified copy of hiccup/render-tag, only made
-; non-private so we can make it get run at runtime.
-(defn render-tag
-  "Render a HTML tag represented as a vector. This is meant
-   to be called at runtime. This function is just a slight
-   modification of hiccup/render-tag."
-  [element]
-  (let [[tag attrs content] (parse-element element)]
-    (if (or content (container-tags tag))
-      (str "<" tag (make-attrs attrs) ">"
-	   (hiccup/html content)
-	   "</" tag ">")
-      (str "<" tag (make-attrs attrs) " />"))))
-
 (declare compile-html)
 (defn- compile-tag
   "Compile an HTML tag represented as a vector to the code to render
@@ -130,7 +116,9 @@
 	(do
 	  (emit "<" tag (make-attrs attrs) " />"))))
     (do (perf-warning element)
-	(emit `(render-tag ~element)))))
+	(emit `(#'hiccup/render-tag ~element))))) ;; Quoting so we can refer to
+                                                  ;; private element of hiccup
+                                                  ;; in code we return.
 
 (defn- compile-html
   "Compile a Clojure data structure to the code to render it
