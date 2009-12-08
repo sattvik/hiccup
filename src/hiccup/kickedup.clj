@@ -49,6 +49,39 @@
 	    x)
     (or (number? x) (string? x) (keyword? x))))
 
+(defn vector-has-form?
+  "Takes two vectors; the first is compared element-wise against the second
+   by applying each element of the second to each corresponding element of
+   the first. Different sizes are not a match, although the keyword :any can
+   be used to abort the test and return true if it is reached."
+  [vtr form]
+  (loop [curr-vtr vtr
+	 curr-form form]
+	(let [vtr-1 (first curr-vtr)
+	      form-1 (first curr-form)]
+	  ;; If they're both empty, or the current form is :any, return true.
+	  (if (or (and (empty? curr-vtr) (empty? curr-form))
+		  (= form-1 :any))
+	    true ;; Same length and empty, so true.
+	    (if (or (empty? curr-vtr) (empty? curr-form))
+	      false ;; They're not both empty, but one and not the other is.
+	      (if (or (nil? vtr-1) (nil? form-1)) ;; If either vector ran out...
+		false
+		;; Form is ok, apply test.
+		(if (form-1 vtr-1)
+		  (recur (rest curr-vtr) (rest curr-form))
+		  false)))))))     ;; They didn't match.
+
+(defn can-compile-vector?
+  "Tests a vector to see if it's presented to us in a form that we can compile."
+  [vtr]
+  ;; Keep in mind, we test for all literals first, so only need to check for
+  ;; cases that are not all literals.
+  (cond (literal? vtr) true      ;; A fully literal vector, always compiles.
+	(vector-has-form? vtr [symbol?]) true
+	(vector-has-form? vtr [literal? map? :any]) true
+	:otherwise false))
+
 (defn- perf-warning
   "If *warn-on-interpret* is true, outputs a performance warning."
   [form]
