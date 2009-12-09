@@ -36,18 +36,28 @@
   (and (literal? (keys m))
        (literal? (vals m))))
 
-(defn- literal?
+(defn- literal-vector?
+  "Tests whether a vector is a literal (all values literal)."
+  [v]
+  (every? #(or (literal? %)
+	       (vector? %)
+	       (and (map? %) (literal-map? %)))
+	  v))
+
+(defn- literal-list?
+  "Tests whether a list is a literal (all values literal)."
+  [l]
+  (or (every? literal? l)))
+
+(defn literal?
   "Tests whether or not the argument is a literal we can compile (ie,
    it's either a simple literal, or a supported collection of literals)."
   [x]
-  (if (or (vector? x) (map? x))
-    (every? #(or (number? %)
-		 (string? %)
-		 (keyword? %)
-		 (vector? %)
-		 (and (map? %) (literal-map? %)))
-	    x)
-    (or (number? x) (string? x) (keyword? x))))
+  (cond (vector? x) (literal-vector? x)
+	(map? x) (literal-map? x)
+	(list? x) (literal-list? x)
+	(seq? x) (literal-list? x)
+	:otherwise (or (number? x) (string? x) (keyword? x) (nil? x))))
 
 (defn vector-has-form?
   "Takes two vectors; the first is compared element-wise against the second
@@ -79,7 +89,9 @@
   ;; cases that are not all literals.
   (cond (literal? vtr) true      ;; A fully literal vector, always compiles.
 	(vector-has-form? vtr [symbol?]) true
+	(vector-has-form? vtr [symbol? literal? :any]) true
 	(vector-has-form? vtr [literal? map? :any]) true
+	(vector-has-form? vtr [symbol? map? :any]) true
 	:otherwise false))
 
 (defn- perf-warning
@@ -100,13 +112,15 @@
 (defn- make-attrs
   "Turn a map into a string of sorted HTML attributes."
   [attrs]
-  (apply str
-    (sort
-      (for [[attr value] attrs]
-	(cond
-	 (true? value) (format-attr attr attr)
-	 (not value)   ""
-	 :otherwise    (format-attr attr value))))))
+  (cond (literal? attrs)
+	(apply str
+	       (sort
+		(for [[attr value] attrs]
+		  (cond
+		   (true? value) (format-attr attr attr)
+		   (not value)   ""
+		   :otherwise    (format-attr attr value)))))
+	:otherwise `(#'make-attrs ~attrs))) ;; Make the attrs at runtime.
 
 (defvar- re-tag
   #"([^\s\.#]+)(?:#([^\s\.#]+))?(?:\.([^\s#]+))?"
@@ -139,7 +153,7 @@
   "Compile an HTML tag represented as a vector to the code to render
    it as a string of HTML."
   [element]
-  (if (literal? element)
+  (if (can-compile-vector? element)
     (let [[tag attrs content] (parse-element element)]
       (if (or content (container-tags tag))
 	(do
@@ -161,10 +175,13 @@
    (vector? data) (compile-tag data)
    (seq? data)    (if (or (vector? (first data))
 			  (string? (first data))
-			  (number? (first data)))
+			  (number? (first data))
+			  (symbol? (first data)))
 		    (apply str (map compile-html data))
 		    (do (perf-warning data)
-			(emit `(apply str (map hiccup/html ~@data)))))
+			(emit `(apply str (map #'hiccup/render-html
+					       (vector ~@data))))))
+   (symbol? data) (emit `(apply str ~data))
    :otherwise     (emit (as-str data))))
 
 (defmacro kickup
