@@ -87,11 +87,13 @@
   [vtr]
   ;; Keep in mind, we test for all literals first, so only need to check for
   ;; cases that are not all literals.
-  (cond (literal? vtr) true      ;; A fully literal vector, always compiles.
+  (cond (literal? vtr) true
 	(vector-has-form? vtr [symbol?]) true
 	(vector-has-form? vtr [symbol? literal? :any]) true
 	(vector-has-form? vtr [literal? map? :any]) true
 	(vector-has-form? vtr [symbol? map? :any]) true
+	(vector-has-form? vtr [literal? symbol?]) true
+	(vector-has-form? vtr [literal? list?]) true
 	:otherwise false))
 
 (defn- perf-warning
@@ -148,6 +150,26 @@
       [tag (merge tag-attrs map-attrs) (next content)]
       [tag tag-attrs content])))
 
+(defn- compile-tag-2-ambiguous
+  "Compile an HTML tag with 2 elements, of which the second is not a literal,
+   to the code to render it as a string of HTML. This function generates the
+   code to make crucial parsing decisions at runtime for things we can't know
+   at compile time. Due to the nature of HTML, this requires this code to
+   handle the closing tag (or lack of). It generates the content of the tag
+   starting right after the tag-name."
+  [tag tag-attrs attrs-or-content standalone?]
+  (let [rendered-tag-attrs (make-attrs tag-attrs)]
+    ;; The whole problem is we don't know if the non-literal second element
+    ;; is a map of attributes or the content of the tag.
+    (emit `(if (map? ~@attrs-or-content)
+	     (str (#'hiccup/make-attrs (merge ~tag-attrs ~@attrs-or-content))
+		  (if ~standalone? " />" ">"))
+	     ;; Otherwise, it is to be treated as content. Note this means a
+	     ;; closing tag; if it has content, it needs a closing tag.
+	     (str ~rendered-tag-attrs
+		  ">" (#'hiccup/render-html ~@attrs-or-content)
+		  "</" ~tag ">")))))
+
 (declare compile-html)
 (defn- compile-tag
   "Compile an HTML tag represented as a vector to the code to render
@@ -155,17 +177,27 @@
   [element]
   (if (can-compile-vector? element)
     (let [[tag attrs content] (parse-element element)]
-      (if (or content (container-tags tag))
-	(do
-	  (emit "<" tag (make-attrs attrs) ">")
-	  (compile-html content)
-	  (emit "</" tag ">"))
-	(do
-	  (emit "<" tag (make-attrs attrs) " />"))))
+      (if (and (= (count element) 2)
+	       (not (literal? element)))
+	;; So we can compile it, but it's not all literals, and only 2 elements:
+	;; Special case to handle deferred 2nd element, ambiguous til runtime.
+	(if (container-tags tag)
+	  (do
+	    (emit "<" tag)
+	    (compile-tag-2-ambiguous tag attrs content false))
+	  (do
+	    (emit "<" tag)
+	    (compile-tag-2-ambiguous tag attrs content true)))
+	;; Else, we have a routine that will compile it otherwise.
+	(if (or content (container-tags tag))
+	  (do
+	    (emit "<" tag (make-attrs attrs) ">")
+	    (compile-html content)
+	    (emit "</" tag ">"))
+	  (do
+	    (emit "<" tag (make-attrs attrs) " />")))))
     (do (perf-warning element)
-	(emit `(#'hiccup/render-tag ~element))))) ;; Quoting so we can refer to
-                                                  ;; private element of hiccup
-                                                  ;; in code we return.
+	(emit `(#'hiccup/render-tag ~element)))))
 
 (defn- compile-html
   "Compile a Clojure data structure to the code to render it
