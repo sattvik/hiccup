@@ -20,14 +20,14 @@
    logic of string optimization happens: if you emit two strings in a row,
    they get combined into one string."
   [item & items]
-  (if (and (string? item)             ;; If we can, merge the two strings.
-	   (string? (last steps)))
-    (set! steps (assoc steps
-		  (dec (count steps))
-		  (str (last steps) item)))
-    (set! steps (conj steps item)))   ;; Otherwise just add whatever.
-  (when (not (empty? items))
-    (apply emit items)))
+    (if (and (string? item)   ;; If we can, merge the two strings.
+	     (string? (last steps)))
+      (set! steps (assoc steps
+		    (dec (count steps))
+		    (str (last steps) item)))
+      (set! steps (conj steps item)))   ;; Otherwise just add whatever.
+    (when (not (empty? items))
+      (apply emit items)))
 
 (declare literal?)
 (defn- literal-map?
@@ -57,7 +57,8 @@
 	(map? x) (literal-map? x)
 	(list? x) (literal-list? x)
 	(seq? x) (literal-list? x)
-	:otherwise (or (number? x) (string? x) (keyword? x) (nil? x))))
+	:otherwise (or (number? x) (string? x) (keyword? x) (nil? x)
+		       (true? x) (false? x))))
 
 (defn vector-has-form?
   "Takes two vectors; the first is compared element-wise against the second
@@ -109,7 +110,7 @@
 (defn- format-attr
   "Turn a name/value pair into an attribute stringp"
   [name value]
-  (str " " (as-str name) "=\"" (escape-html value) "\""))
+  (str " " (as-str name) "=\"" (hiccup/escape-html value) "\""))
 
 (defn- make-attrs
   "Turn a map into a string of sorted HTML attributes."
@@ -159,16 +160,25 @@
    starting right after the tag-name."
   [tag tag-attrs attrs-or-content standalone?]
   (let [rendered-tag-attrs (make-attrs tag-attrs)]
-    ;; The whole problem is we don't know if the non-literal second element
+    ;; The problem is we don't know if the non-literal second element
     ;; is a map of attributes or the content of the tag.
-    (emit `(if (map? ~@attrs-or-content)
-	     (str (#'hiccup/make-attrs (merge ~tag-attrs ~@attrs-or-content))
-		  (if ~standalone? " />" ">"))
-	     ;; Otherwise, it is to be treated as content. Note this means a
-	     ;; closing tag; if it has content, it needs a closing tag.
-	     (str ~rendered-tag-attrs
-		  ">" (#'hiccup/render-html ~@attrs-or-content)
-		  "</" ~tag ">")))))
+    (emit `(cond
+	    (nil? '~attrs-or-content)
+	    ;; No unparsed attributes or content, but something in the attrs
+	    ;; had to be evaluated at runtime, so we do it that way.
+	    (str (#'hiccup/make-attrs ~tag-attrs)
+		 (if (#'container-tags ~tag) ;; No content, so container tag
+		   (str "><" ~tag ">")       ;; decision depends on tag.
+		   " />"))
+	    (map? ~@attrs-or-content)
+	    ;; There are unparsed attributes, so do the merge and format.
+	    (str (#'hiccup/make-attrs (merge ~tag-attrs ~@attrs-or-content))
+		 (if ~standalone? " />" ">"))
+	    ;; Otherwise, it is to be treated as content. Note this means a
+	    ;; closing tag; if it has content, it needs a closing tag.
+	    :otherwise (str ~rendered-tag-attrs
+			    ">" (#'hiccup/render-html ~@attrs-or-content)
+			    "</" ~tag ">")))))
 
 (declare compile-html)
 (defn- compile-tag
