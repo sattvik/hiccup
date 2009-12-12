@@ -19,15 +19,17 @@
   "Append this item to the list of steps to compile. This is also where the
    logic of string optimization happens: if you emit two strings in a row,
    they get combined into one string."
-  [item & items]
-    (if (and (string? item)   ;; If we can, merge the two strings.
+  [& items]
+  (loop [curr-item (first items)
+	 rest-items (rest items)]
+    (if (and (string? curr-item)   ;; If we can, merge the two strings.
 	     (string? (last steps)))
       (set! steps (assoc steps
 		    (dec (count steps))
-		    (str (last steps) item)))
-      (set! steps (conj steps item)))   ;; Otherwise just add whatever.
-    (when (not (empty? items))
-      (apply emit items)))
+		    (str (last steps) curr-item)))
+      (set! steps (conj steps curr-item)))   ;; Otherwise just add whatever.
+    (when (not (empty? rest-items))
+      (recur (first rest-items) (rest rest-items)))))
 
 (declare literal?)
 (defn- literal-map?
