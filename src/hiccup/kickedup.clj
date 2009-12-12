@@ -78,12 +78,10 @@
 	    true ;; Same length and empty, so true.
 	    (if (or (empty? curr-vtr) (empty? curr-form))
 	      false ;; They're not both empty, but one and not the other is.
-	      (if (or (nil? vtr-1) (nil? form-1)) ;; If either vector ran out...
-		false
-		;; Form is ok, apply test.
-		(if (form-1 vtr-1)
-		  (recur (rest curr-vtr) (rest curr-form))
-		  false)))))))     ;; They didn't match.
+	      ;; Form is ok, apply test.
+	      (if (form-1 vtr-1)
+		(recur (rest curr-vtr) (rest curr-form))
+		false))))))      ;; They didn't match.
 
 (defn can-compile-vector?
   "Tests a vector to see if it's presented to us in a form that we can compile."
