@@ -47,7 +47,7 @@
 (defn- literal-list?
   "Tests whether a list is a literal (all values literal)."
   [l]
-  (or (every? literal? l)))
+  (every? literal? l))
 
 (defn literal?
   "Tests whether or not the argument is a literal we can compile (ie,
