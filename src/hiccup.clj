@@ -93,10 +93,6 @@
   "A dynamically bound vector that builds up a list of strings and actions,
   which will then be compiled into operations on a StringBuilder.")
 
-(defvar- builder-name 'string-builder
-  "This will be the name of a lexically scoped variable that builds up
-   the result string.")
-
 (defn- emit
   "Append this item to the list of steps to compile. This is also where the
    logic of string optimization happens: if you emit two strings in a row,
@@ -272,8 +268,7 @@
   [& html-content]
   (binding [steps []]
     (compile-html html-content)
-    (let [the-steps (map #(list `.append `~builder-name %) steps)]
-      ;; Squeeze steps down into a compiled function to return.
-      `(let [~builder-name (StringBuilder.)]
-         ~@the-steps
-         (.toString ~builder-name)))))
+    (let [sb (gensym "sb")]
+      `(let [~sb (StringBuilder.)]
+         ~@(for [step steps] `(.append ~sb ~step))
+         (.toString ~sb)))))
