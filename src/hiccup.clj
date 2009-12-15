@@ -165,14 +165,13 @@
   [vtr]
   ;; Keep in mind, we test for all literals first, so only need to check for
   ;; cases that are not all literals.
-  (cond (literal? vtr) true
-        (vector-has-form? vtr [symbol?]) true
-        (vector-has-form? vtr [symbol? literal? :any]) true
-        (vector-has-form? vtr [literal? map? :any]) true
-        (vector-has-form? vtr [symbol? map? :any]) true
-        (vector-has-form? vtr [literal? symbol?]) true
-        (vector-has-form? vtr [literal? list?]) true
-        :otherwise false))
+  (or (literal? vtr)
+      (vector-has-form? vtr [symbol?])
+      (vector-has-form? vtr [symbol? literal? :any])
+      (vector-has-form? vtr [literal? map? :any])
+      (vector-has-form? vtr [symbol? map? :any])
+      (vector-has-form? vtr [literal? symbol?])
+      (vector-has-form? vtr [literal? list?])))
 
 (defn- perf-warning
   "If *warn-on-interpret* is true, outputs a performance warning."
