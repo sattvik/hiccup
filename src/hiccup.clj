@@ -59,7 +59,7 @@
   [[tag & content]]
   (let [[tag id class] (parse-tag-name tag)
         tag-attrs      {:id id
-                        :class (if class (.replace class "." " "))}
+                        :class (if class (.replace #^String class "." " "))}
         map-attrs      (first content)]
     (if (map? map-attrs)
       [tag (merge tag-attrs map-attrs) (next content)]
