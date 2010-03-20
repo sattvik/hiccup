@@ -13,6 +13,15 @@
         clojure.contrib.java-utils)
   (:import java.util.Map))
 
+(def #^{:doc "Determines the method to self-close elements."}
+  *html-mode* :xhtml-strict)
+
+(def #^{:doc "The various self-close forms"
+        :private true}
+  self-close {:html4              " >"
+              :xhtml-strict       " />"
+              :xhtml-transitional " />"})
+
 (defn escape-html
   "Change special characters into HTML character entities."
   [text]
@@ -76,7 +85,7 @@
       (str "<" tag (make-attrs attrs) ">"
            (render-html content)
            "</" tag ">")
-      (str "<" tag (make-attrs attrs) " />"))))
+      (str "<" tag (make-attrs attrs) (self-close *html-mode*)))))
 
 (defn render-html
   "Render a Clojure data structure to a string of HTML."
