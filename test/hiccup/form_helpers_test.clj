@@ -1,20 +1,25 @@
 (ns test.hiccup.form-helpers-test
   (:use clojure.test)
   (:use hiccup.core)
-  (:use hiccup.form-helpers))
+  (:use hiccup.form-helpers
+        test.hiccup.test-utils))
 
 (deftest test-hidden-field
-  (is (= (html (hidden-field :foo "bar"))
-         "<input id=\"foo\" name=\"foo\" type=\"hidden\" value=\"bar\" />")))
+  (test-multi-output {:xhtml "<input id=\"foo\" name=\"foo\" type=\"hidden\" value=\"bar\" />"
+                      :html4 "<input id=\"foo\" name=\"foo\" type=\"hidden\" value=\"bar\" >"}
+                     (hidden-field :foo "bar")))
 
 (deftest test-text-field
-  (is (= (html (text-field :foo))
-         "<input id=\"foo\" name=\"foo\" type=\"text\" />")))
+  (test-multi-output {:xhtml "<input id=\"foo\" name=\"foo\" type=\"text\" />"
+                      :html4 "<input id=\"foo\" name=\"foo\" type=\"text\" >"}
+                     (text-field :foo)))
 
 (deftest test-check-box
-  (is (= (html (check-box :foo true))
-         (str "<input checked=\"checked\" id=\"foo\" name=\"foo\""
-              " type=\"checkbox\" value=\"true\" />"))))
+  (test-multi-output {:xhtml (str "<input checked=\"checked\" id=\"foo\" name=\"foo\""
+                                  " type=\"checkbox\" value=\"true\" />")
+                      :html4 (str "<input checked=\"checked\" id=\"foo\" name=\"foo\""
+                                  " type=\"checkbox\" value=\"true\" >")}
+                     (check-box :foo true)))
 
 (deftest test-select-options
   (are [x y] (= (html x) y)
